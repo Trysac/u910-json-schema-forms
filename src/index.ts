@@ -1,20 +1,10 @@
 /**
  * Public entry point of @trysac/json-schema-forms.
- *
- * Replace this placeholder with the utility's real API. Keep every export documented and covered by tests.
  */
 
-/**
- * Builds a greeting for `name`.
- *
- * @param name - Who to greet. Surrounding whitespace is ignored.
- * @returns The greeting, for example `"Hello, Ada!"`.
- * @throws {TypeError} When `name` is empty after trimming.
- */
-export function greet(name: string): string {
-  const trimmed = name.trim();
-  if (trimmed === "") {
-    throw new TypeError("name must not be empty");
-  }
-  return `Hello, ${trimmed}!`;
-}
+export { compileForm } from "./compile.js";
+export { type ErrorCode, type FieldError, FormError, type FormErrorCode } from "./errors.js";
+export { renderHtml } from "./render.js";
+export type { CompileOptions, Form, FormField, RenderOptions, ValidateOptions } from "./types.js";
+export { validate } from "./validate.js";
+export { visibleFields } from "./visibility.js";
