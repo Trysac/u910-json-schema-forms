@@ -148,38 +148,28 @@ function resolveSchema(
     currentObj.properties &&
     typeof currentObj.properties === "object"
   ) {
-    resolved.properties = {};
+    const entries: [string, ResolvedSubschema][] = [];
     for (const [k, v] of Object.entries(currentObj.properties as Record<string, unknown>)) {
-      if (v && typeof v === "object" && !Array.isArray(v)) {
-        resolved.properties[k] = resolveSchema(
-          v as Record<string, unknown>,
-          defs,
-          depth + 1,
-          maxDepth,
-          seenRefs,
-        );
-      }
+      const sub = resolveSubschema(v, defs, depth + 1, maxDepth, seenRefs);
+      if (sub) entries.push([k, sub]);
     }
+    // fromEntries defines own properties, so names like "__proto__" are kept as keys.
+    resolved.properties = Object.fromEntries(entries);
   }
 
   if ("additionalProperties" in currentObj) {
     if (typeof currentObj.additionalProperties === "boolean") {
       resolved.additionalProperties = currentObj.additionalProperties;
+    } else {
+      throw new FormError(
+        "unsupported_keyword",
+        "Unsupported keyword: additionalProperties with a schema (only true or false)",
+      );
     }
   }
 
-  if (
-    currentObj.items &&
-    typeof currentObj.items === "object" &&
-    !Array.isArray(currentObj.items)
-  ) {
-    resolved.items = resolveSchema(
-      currentObj.items as Record<string, unknown>,
-      defs,
-      depth + 1,
-      maxDepth,
-      seenRefs,
-    );
+  if ("items" in currentObj) {
+    resolved.items = resolveSubschema(currentObj.items, defs, depth + 1, maxDepth, seenRefs);
   }
 
   if (typeof currentObj.minItems === "number") resolved.minItems = currentObj.minItems;
@@ -209,40 +199,19 @@ function resolveSchema(
 
   if (Array.isArray(currentObj.allOf)) {
     resolved.allOf = currentObj.allOf
-      .filter(
-        (s): s is Record<string, unknown> =>
-          typeof s === "object" && s !== null && !Array.isArray(s),
-      )
-      .map((s) => resolveSchema(s, defs, depth + 1, maxDepth, seenRefs));
+      .map((s) => resolveSubschema(s, defs, depth + 1, maxDepth, seenRefs))
+      .filter((s): s is ResolvedSubschema => s !== undefined);
   }
 
-  if (currentObj.if && typeof currentObj.if === "object" && !Array.isArray(currentObj.if)) {
-    resolved.if = resolveSchema(
-      currentObj.if as Record<string, unknown>,
-      defs,
-      depth + 1,
-      maxDepth,
-      seenRefs,
-    );
+  if ("if" in currentObj) {
+    resolved.if = resolveSubschema(currentObj.if, defs, depth + 1, maxDepth, seenRefs);
   }
-  if (currentObj.then && typeof currentObj.then === "object" && !Array.isArray(currentObj.then)) {
+  if ("then" in currentObj) {
     // biome-ignore lint/suspicious/noThenProperty: JSON Schema keyword 'then'
-    resolved.then = resolveSchema(
-      currentObj.then as Record<string, unknown>,
-      defs,
-      depth + 1,
-      maxDepth,
-      seenRefs,
-    );
+    resolved.then = resolveSubschema(currentObj.then, defs, depth + 1, maxDepth, seenRefs);
   }
-  if (currentObj.else && typeof currentObj.else === "object" && !Array.isArray(currentObj.else)) {
-    resolved.else = resolveSchema(
-      currentObj.else as Record<string, unknown>,
-      defs,
-      depth + 1,
-      maxDepth,
-      seenRefs,
-    );
+  if ("else" in currentObj) {
+    resolved.else = resolveSubschema(currentObj.else, defs, depth + 1, maxDepth, seenRefs);
   }
 
   if (typeof currentObj.title === "string") resolved.title = currentObj.title;
@@ -250,6 +219,30 @@ function resolveSchema(
   if ("default" in currentObj) resolved.default = currentObj.default;
 
   return resolved;
+}
+
+/**
+ * Resolves a subschema position. A boolean `true` schema accepts everything and is treated as `{}`;
+ * a boolean `false` schema is outside the supported subset and is rejected instead of being ignored.
+ * Values that are not schemas at all are skipped.
+ */
+function resolveSubschema(
+  value: unknown,
+  defs: Record<string, Record<string, unknown>>,
+  depth: number,
+  maxDepth: number,
+  seenRefs: Set<string>,
+): ResolvedSubschema | undefined {
+  if (value === true) {
+    return resolveSchema({}, defs, depth, maxDepth, seenRefs);
+  }
+  if (value === false) {
+    throw new FormError("unsupported_keyword", "Unsupported boolean schema: false");
+  }
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return resolveSchema(value as Record<string, unknown>, defs, depth, maxDepth, seenRefs);
+  }
+  return undefined;
 }
 
 function collectFields(

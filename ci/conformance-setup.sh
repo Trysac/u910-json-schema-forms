@@ -2,9 +2,9 @@
 set -euo pipefail
 
 TARGET_DIR="test/fixtures/json-schema-test-suite"
-COMMIT="23a2a6886e090f77d33d99d14619d84bf40114cc"
+COMMIT="245a45abc90190c0bff04d97e6d2b541b4bb9f12"  # tag Test-JSON-Schema-Acceptance-1.041
 ARCHIVE_URL="https://github.com/json-schema-org/JSON-Schema-Test-Suite/archive/${COMMIT}.tar.gz"
-EXPECTED_SHA256="9a1a8c9b98099ea6baef2dc1b11ce20fbe4b4a39ba4cbe6562ba7cf4fb5f442b"
+EXPECTED_SHA256="b60bdf58fd414e9b86c8be70b03e3b2d596b8bc3bc822a2083d86041cea4b20e"
 
 mkdir -p "${TARGET_DIR}"
 ARCHIVE_FILE="/tmp/json-schema-test-suite.tar.gz"
@@ -21,7 +21,8 @@ if [ "${ACTUAL_SHA256}" != "${EXPECTED_SHA256}" ]; then
   exit 1
 fi
 
-tar -xzf "${ARCHIVE_FILE}" --strip-components=1 -C "${TARGET_DIR}"
+# Extract only the JSON test data: the archive also ships TypeScript tooling that the gates would lint.
+tar -xzf "${ARCHIVE_FILE}" --strip-components=1 -C "${TARGET_DIR}" --wildcards "*/tests/*"
 rm -f "${ARCHIVE_FILE}"
 
 if command -v npx >/dev/null 2>&1; then

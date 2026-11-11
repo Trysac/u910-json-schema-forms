@@ -313,4 +313,46 @@ describe("Additional unit tests for validation & rendering", () => {
     expect(validate(form, { multi: true })).toEqual([]);
     expect(validate(form, { multi: 123 })).toHaveLength(1);
   });
+
+  it("treats a true subschema as accepting everything", () => {
+    const form = compileForm({
+      type: "object",
+      properties: { any: true },
+      if: true,
+      // biome-ignore lint/suspicious/noThenProperty: JSON Schema keyword 'then'
+      then: { required: ["any"] },
+    });
+    expect(validate(form, { any: [1, "x"] })).toEqual([]);
+    expect(validate(form, {})).toEqual([
+      { path: "/any", code: "required", message: "This field is required" },
+    ]);
+  });
+
+  it("rejects false subschemas and schema-valued additionalProperties instead of ignoring them", () => {
+    for (const schema of [
+      { properties: { bar: false } },
+      { items: false },
+      { allOf: [true, false] },
+      // biome-ignore lint/suspicious/noThenProperty: JSON Schema keyword 'then'
+      { if: { const: 1 }, then: false },
+      { additionalProperties: { type: "boolean" } },
+    ]) {
+      expect(() => compileForm(schema)).toThrowError(
+        expect.objectContaining({ code: "unsupported_keyword" }),
+      );
+    }
+  });
+
+  it("keeps properties named like Object.prototype members", () => {
+    const form = compileForm(
+      JSON.parse(
+        '{"properties": {"__proto__": {"type": "number"}, "constructor": {"type": "number"}}}',
+      ),
+    );
+    expect(form.fields.map((f) => f.pointer)).toEqual(["/__proto__", "/constructor"]);
+    expect(validate(form, JSON.parse('{"__proto__": "foo"}'))).toEqual([
+      { path: "/__proto__", code: "type", message: "Must be a number" },
+    ]);
+    expect(validate(form, { constructor: "x" })).toHaveLength(1);
+  });
 });
