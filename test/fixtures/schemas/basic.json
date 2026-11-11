@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "username": {
+      "type": "string",
+      "title": "Username",
+      "minLength": 3,
+      "maxLength": 20
+    },
+    "age": {
+      "type": "integer",
+      "title": "Age",
+      "minimum": 18
+    },
+    "role": {
+      "type": "string",
+      "enum": ["user", "admin"]
+    }
+  },
+  "required": ["username", "age"]
+}

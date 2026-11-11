@@ -9,4 +9,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Initial release of @trysac/json-schema-forms with schema compilation, validation, conditional visibility, and accessible HTML rendering.
 - Initial project structure from the factory utility template.
